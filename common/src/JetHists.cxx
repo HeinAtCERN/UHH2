@@ -19,7 +19,7 @@ JetHistsBase::jetHist JetHistsBase::book_jetHist(const string & axisSuffix, cons
   jet_hist.pt = book<TH1F>("pt"+histSuffix,"p_{T} "+axisSuffix,50,minPt,maxPt);
   jet_hist.eta = book<TH1F>("eta"+histSuffix,"#eta "+axisSuffix,100,-5,5);
   jet_hist.phi = book<TH1F>("phi"+histSuffix,"#phi "+axisSuffix,50,-M_PI,M_PI);
-  jet_hist.mass = book<TH1F>("mass"+histSuffix,"M^{ "+axisSuffix+"} [GeV/c^{2}]", 100, 0, 300);
+  jet_hist.mass = book<TH1F>("mass"+histSuffix,"M^{ "+axisSuffix+"} [GeV/c^{2}]", 50, 0, 300);
   jet_hist.csv = book<TH1F>("csv"+histSuffix,"csv-disriminator "+axisSuffix,50,0,1);
   return jet_hist;
 }
@@ -101,7 +101,7 @@ TopJetHists::subjetHist TopJetHists::book_subjetHist(const std::string & axisSuf
   subjet_hist.pt = book<TH1F>("pt"+histSuffix,"p_{T} "+axisSuffix,50,minPt,maxPt);
   subjet_hist.eta = book<TH1F>("eta"+histSuffix,"#eta "+axisSuffix,100,-5,5);
   subjet_hist.phi = book<TH1F>("phi"+histSuffix,"#phi "+axisSuffix,50,-M_PI,M_PI);
-  subjet_hist.mass = book<TH1F>("mass"+histSuffix,"M^{ "+axisSuffix+"} [GeV/c^{2}]", 100, 0, 200);
+  subjet_hist.mass = book<TH1F>("mass"+histSuffix,"M^{ "+axisSuffix+"} [GeV/c^{2}]", 50, 0, 200);
   subjet_hist.csv = book<TH1F>("csv"+histSuffix,"csv-disriminator "+axisSuffix,50,0,1);
   subjet_hist.sum4Vec = book<TH1F>("sum_mass"+histSuffix,"Mass sum  "+axisSuffix,100,0,350);
 
@@ -126,20 +126,39 @@ void TopJetHists::fill_subjetHist(const TopJet & topjet, subjetHist & subjet_his
 JetHistsBase::jetHist TopJetHists::book_topJetHist(const std::string & axisSuffix, const std::string & histSuffix, double minPt, double maxPt) {
   auto jet_hist = book_jetHist(axisSuffix, histSuffix, minPt, maxPt);
   jet_hist.mvahiggsdiscr = book<TH1F>("mvahiggsdiscr"+histSuffix,"mva-higgs-disriminator "+axisSuffix,50,0,1);
-  jet_hist.prunedmass = book<TH1F>("mass_pruned"+histSuffix,"M^{ "+axisSuffix+"}_{pruned} [GeV/c^{2}]", 100, 0, 300);
-  jet_hist.subjet_sum_mass = book<TH1F>("mass_subjet_sum"+histSuffix,"M^{ "+axisSuffix+"}_{subjet sum} [GeV/c^{2}]", 100, 0, 300);
+  jet_hist.prunedmass = book<TH1F>("mass_pruned"+histSuffix,"M^{ "+axisSuffix+"}_{pruned} [GeV/c^{2}]", 50, 0, 300);
+  jet_hist.subjet_sum_mass = book<TH1F>("mass_subjet_sum"+histSuffix,"M^{ "+axisSuffix+"}_{subjet sum} [GeV/c^{2}]", 50, 0, 300);
+
+  jet_hist.csv1_vs_cvs2 = book<TH2F>("csv_subjets_2d"+histSuffix,";csv pt-leading subjet "+axisSuffix+";csv pt-subleading subjet "+axisSuffix, 50, 0, 1, 50, 0, 1);
+
+  // jet_hist.neutralHadronEnergyFraction = book<TH1F>("neutralHadronEnergyFraction"+histSuffix,"neutral hadron energy fraction "+axisSuffix, 50, 0, 1);
+  // jet_hist.chargedHadronEnergyFraction = book<TH1F>("chargedHadronEnergyFraction"+histSuffix,"charged hadron energy fraction "+axisSuffix, 50, 0, 1);
+  // jet_hist.neutralHadronMultiplicity = book<TH1F>("neutralHadronMultiplicity"+histSuffix,"neutral hadron multiplicity "+axisSuffix, 21, -.5, 20.5);
+  // jet_hist.chargedHadronMultiplicity = book<TH1F>("chargedHadronMultiplicity"+histSuffix,"charged hadron multiplicity "+axisSuffix, 50, -1, 101);
+
   return jet_hist;
 }
 
 void TopJetHists::fill_topJetHist(const TopJet & jet, JetHistsBase::jetHist & jet_hist, double  weight) {
   fill_jetHist(jet, jet_hist, weight);
+
+  const auto subjets = jet.subjets();
   LorentzVector subjet_sum;
-  for (const auto s : jet.subjets()) {
+  for (const auto s : subjets) {
     subjet_sum += s.v4();
   }
   jet_hist.mvahiggsdiscr->Fill(jet.mvahiggsdiscr(), weight);
   jet_hist.prunedmass->Fill(jet.prunedmass(), weight);
   jet_hist.subjet_sum_mass->Fill(subjet_sum.M(), weight);
+
+  if (subjets.size() > 1) {
+      jet_hist.csv1_vs_cvs2->Fill(subjets[0].btag_combinedSecondaryVertex(), subjets[1].btag_combinedSecondaryVertex(), weight);
+  }
+
+  // jet_hist.neutralHadronEnergyFraction->Fill(jet.neutralHadronEnergyFraction(), weight);
+  // jet_hist.chargedHadronEnergyFraction->Fill(jet.chargedHadronEnergyFraction(), weight);
+  // jet_hist.neutralHadronMultiplicity->Fill(jet.neutralMultiplicity() - jet.photonMultiplicity(), weight);
+  // jet_hist.chargedHadronMultiplicity->Fill(jet.chargedMultiplicity()- jet.electronMultiplicity() - jet.muonMultiplicity(), weight);
 }
 
 TopJetHists::TopJetHists(Context & ctx,
